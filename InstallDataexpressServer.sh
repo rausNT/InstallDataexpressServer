@@ -75,38 +75,30 @@ log "Обновление ClamAV и первичное сканирование.
 sudo freshclam
 sudo clamscan -r /opt/dxwebsrv
 
-# Запрос пути к пользовательской базе или загрузка тестовой
-read -p "Хотите загрузить свою базу данных? (y/n): " use_custom_db
-if [[ "$use_custom_db" == "y" ]]; then
-    read -p "Введите полный путь к файлу базы данных на вашем компьютере: " custom_db_path
-    if [[ -f "$custom_db_path" ]]; then
-        sudo cp "$custom_db_path" /var/lib/firebird/data/custom_database.fdb
-        sudo chown firebird:firebird /var/lib/firebird/data/custom_database.fdb
-        sudo chmod 640 /var/lib/firebird/data/custom_database.fdb
-        log "Пользовательская база данных загружена и установлена."
-    else
-        log "Ошибка: Файл базы данных не найден. Загружается тестовая база."
-        use_custom_db="n"
-    fi
-fi
-
-if [[ "$use_custom_db" != "y" ]]; then
-    log "Загрузка и установка тестовой базы данных..."
-    wget -O /tmp/dataexpress.zip "https://mydataexpress.ru/files/dataexpress.zip?r=4986"
-    sudo unzip /tmp/dataexpress.zip -d /var/lib/firebird/data/
-    sudo chown -R firebird:firebird /var/lib/firebird/data/
-    sudo chmod -R 640 /var/lib/firebird/data/
-    rm /tmp/dataexpress.zip
-fi
+log "Загрузка и установка тестовой базы данных..."
+wget -O /tmp/dataexpress.zip "https://mydataexpress.ru/files/dataexpress.zip?r=4986"
+sudo unzip /tmp/dataexpress.zip -d /var/lib/firebird/data/
+sudo chown -R firebird:firebird /var/lib/firebird/data/
+sudo chmod -R 640 /var/lib/firebird/data/
+rm /tmp/dataexpress.zip
 
 # Определение IP-адреса сервера
 server_ip=$(hostname -I | awk '{print $1}')
 
-log "Установка завершена. DataExpress Web Server запущен на порту 8080."
-log "Для доступа к серверу откройте http://$server_ip:8080 в браузере."
-if [[ "$use_custom_db" == "y" ]]; then
-    log "Для подключения к вашей базе используйте строку подключения: '$server_ip:/var/lib/firebird/data/custom_database.fdb' с пользователем 'SYSDBA' и паролем 'masterkey'."
-else
-    log "Для подключения к тестовой базе используйте строку подключения: '$server_ip:/var/lib/firebird/data/dataexpress.fdb' с пользователем 'SYSDBA' и паролем 'masterkey'."
-fi
-log "Webmin установлен и использует SSL. Доступен по адресу: https://$server_ip:10000 (вход через root)."
+cat <<EOM
+============================================
+УСТАНОВКА ЗАВЕРШЕНА
+============================================
+DataExpress Web Server запущен на порту 8080.
+Откройте в браузере: http://$server_ip:8080
+
+Для подключения к тестовой базе данных используйте:
+  Строка подключения: $server_ip:/var/lib/firebird/data/dataexpress.fdb
+  Пользователь: SYSDBA
+  Пароль: masterkey
+
+Webmin установлен и использует SSL.
+Доступен по адресу: https://$server_ip:10000 (вход через root).
+============================================
+EOM
+
