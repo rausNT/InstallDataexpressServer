@@ -77,8 +77,10 @@ sudo clamscan -r /opt/dxwebsrv
 
 log "Загрузка и установка тестовой базы данных..."
 wget -O /tmp/dataexpress.zip "https://mydataexpress.ru/files/dataexpress.zip?r=4986"
-sudo unzip /tmp/dataexpress.zip -d /var/lib/firebird/data/
-sudo chown -R firebird:firebird /var/lib/firebird/data/
+sudo unzip /tmp/dataexpress.zip -d /home/bases/
+sudo chown -R firebird:firebird /home/bases/
+sudo chmod -R 750 /home/bases/
+sudo find /home/bases/ -type f -exec chmod 640 {} \;
 sudo chmod -R 640 /var/lib/firebird/data/
 rm /tmp/dataexpress.zip
 
@@ -93,7 +95,7 @@ DataExpress Web Server запущен на порту 8080.
 Откройте в браузере: http://$server_ip:8080
 
 Для подключения к тестовой базе данных используйте:
-  Строка подключения: $server_ip:/var/lib/firebird/data/dataexpress.fdb
+  Строка подключения: $server_ip:/home/bases/dataexpress.fdb
   Пользователь: SYSDBA
   Пароль: masterkey
 
@@ -101,4 +103,3 @@ Webmin установлен и использует SSL.
 Доступен по адресу: https://$server_ip:10000 (вход через root).
 ============================================
 EOM
-
