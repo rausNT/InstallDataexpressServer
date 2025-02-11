@@ -56,6 +56,7 @@ log "Настройка брандмауэра..."
 sudo ufw allow OpenSSH
 sudo ufw allow 8080/tcp
 sudo ufw allow 10000/tcp  # Webmin
+sudo ufw allow 3050/tcp
 sudo ufw enable
 
 log "Установка и настройка Webmin..."
@@ -95,7 +96,7 @@ DataExpress Web Server запущен на порту 8080.
 Откройте в браузере: http://$server_ip:8080
 
 Для подключения к тестовой базе данных используйте:
-  Строка подключения: $server_ip:/home/bases/dataexpress.fdb
+  Строка подключения: $server_ip:3050:/home/bases/dataexpress.fdb
   Пользователь: SYSDBA
   Пароль: masterkey
 
