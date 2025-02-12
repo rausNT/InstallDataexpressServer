@@ -24,7 +24,11 @@ log "Установка Firebird 2.5..."
 wget https://github.com/FirebirdSQL/firebird/releases/download/R2_5_9/FirebirdCS-2.5.9.27139-0.amd64.tar.gz
 sudo tar -xzf FirebirdCS-2.5.9.27139-0.amd64.tar.gz
 cd FirebirdCS-2.5.9.27139-0.amd64
-sudo ./install.sh
+# Автоматическое подтверждение установки Firebird (нажатие Enter)
+sudo ./install.sh <<EOF
+
+y
+EOF
 cd ..
 rm -rf FirebirdCS-2.5.9.27139-0.amd64*
 
@@ -56,12 +60,12 @@ log "Настройка брандмауэра..."
 sudo ufw allow OpenSSH
 sudo ufw allow 8080/tcp
 sudo ufw allow 10000/tcp  # Webmin
-sudo ufw allow 3050/tcp
-sudo ufw enable
+sudo ufw allow 3050/tcp   # Firebird
+echo "y" | sudo ufw enable
 
 log "Установка и настройка Webmin..."
 wget -qO- http://www.webmin.com/jcameron-key.asc | sudo tee /etc/apt/trusted.gpg.d/webmin.asc
-sudo add-apt-repository "deb http://download.webmin.com/download/repository sarge contrib"
+echo | sudo add-apt-repository "deb http://download.webmin.com/download/repository sarge contrib"
 sudo apt update
 sudo apt install -y webmin
 
@@ -76,14 +80,39 @@ log "Обновление ClamAV и первичное сканирование.
 sudo freshclam
 sudo clamscan -r /opt/dxwebsrv
 
-log "Загрузка и установка тестовой базы данных..."
-wget -O /tmp/dataexpress.zip "https://mydataexpress.ru/files/dataexpress.zip?r=4986"
-sudo unzip /tmp/dataexpress.zip -d /home/bases/
-sudo chown -R firebird:firebird /home/bases/
-sudo chmod -R 750 /home/bases/
-sudo find /home/bases/ -type f -exec chmod 640 {} \;
-sudo chmod -R 640 /var/lib/firebird/data/
-rm /tmp/dataexpress.zip
+log "Создание каталога для баз данных..."
+sudo mkdir -p /home/bases
+sudo chown firebird:firebird /home/bases
+sudo chmod 750 /home/bases
+
+# Запрос пути к пользовательской базе или загрузка тестовой
+read -p "Хотите загрузить свою базу данных? (y/n): " use_custom_db
+if [[ "$use_custom_db" == "y" ]]; then
+    read -p "Введите полный путь к файлу базы данных: " custom_db_path
+    if [[ -f "$custom_db_path" ]]; then
+        sudo cp "$custom_db_path" /home/bases/custom_database.fdb
+        sudo chown firebird:firebird /home/bases/custom_database.fdb
+        sudo chmod 640 /home/bases/custom_database.fdb
+        log "Пользовательская база данных загружена и установлена."
+    else\n        log "Ошибка: Файл базы данных не найден. Загружается тестовая база."
+        use_custom_db="n"
+    fi
+fi
+
+if [[ "$use_custom_db" != "y" ]]; then
+    log "Загрузка и установка тестовой базы данных..."
+    wget -O /tmp/dataexpress.zip "https://mydataexpress.ru/files/dataexpress.zip?r=4986"
+    sudo unzip /tmp/dataexpress.zip -d /home/bases/
+    sudo chown -R firebird:firebird /home/bases/
+    sudo chmod -R 750 /home/bases/\n    sudo find /home/bases/ -type f -exec chmod 640 {} \\;\n    rm /tmp/dataexpress.zip
+fi
+
+# Автоматическое определение файла базы данных (первый найденный .fdb в каталоге /home/bases)
+db_file=$(find /home/bases -maxdepth 1 -type f -name "*.fdb" | head -n 1)
+if [[ -z "$db_file" ]]; then
+    log "Ошибка: Файл базы данных не найден в каталоге /home/bases."
+    exit 1
+fi
 
 # Определение IP-адреса сервера
 server_ip=$(hostname -I | awk '{print $1}')
@@ -95,8 +124,8 @@ cat <<EOM
 DataExpress Web Server запущен на порту 8080.
 Откройте в браузере: http://$server_ip:8080
 
-Для подключения к тестовой базе данных используйте:
-  Строка подключения: $server_ip:3050:/home/bases/dataexpress.fdb
+Для подключения к базе данных используйте следующую строку подключения:
+  $server_ip:3050:$db_file
   Пользователь: SYSDBA
   Пароль: masterkey
 
@@ -104,4 +133,6 @@ Webmin установлен и использует SSL.
 Доступен по адресу: https://$server_ip:10000 (вход через root).
 ============================================
 EOM
+
+log "Установка завершена."
 
