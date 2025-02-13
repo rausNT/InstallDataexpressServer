@@ -18,23 +18,16 @@ log "Обновление системных пакетов..."
 sudo apt update -y && sudo apt upgrade -y
 
 log "Установка необходимых зависимостей..."
-sudo apt-get install -y libncurses5 openbsd-inetd nano ufw clamav unzip certbot expect
+sudo apt-get install -y libncurses5 openbsd-inetd nano ufw clamav unzip certbot
 
 log "Установка Firebird 2.5..."
 wget https://github.com/FirebirdSQL/firebird/releases/download/R2_5_9/FirebirdCS-2.5.9.27139-0.amd64.tar.gz
 sudo tar -xzf FirebirdCS-2.5.9.27139-0.amd64.tar.gz
 cd FirebirdCS-2.5.9.27139-0.amd64
+sudo ./install.sh <<EOF
 
-# Автоматическая установка Firebird с помощью expect:
-expect <<EOF
-spawn sudo ./install.sh
-expect "Press Enter to start installation"
-send "\r"
-expect "please enter SYSDBA password"
-send "masterkey\r"
-expect eof
+y
 EOF
-
 cd ..
 rm -rf FirebirdCS-2.5.9.27139-0.amd64*
 
@@ -112,12 +105,12 @@ if [[ "$use_custom_db" != "y" ]]; then
     sudo unzip /tmp/dataexpress.zip -d /home/bases/
     sudo chown -R firebird:firebird /home/bases/
     sudo chmod -R 750 /home/bases/
-    sudo find /home/bases/ -type f -exec chmod 640 {} \\;
+    sudo find /home/bases/ -type f -exec chmod 640 {} \;
     rm /tmp/dataexpress.zip
 fi
 
-# Автоматическое определение файла базы данных (первый найденный .fdb в каталоге /home/bases)
-db_file=$(find /home/bases -maxdepth 1 -type f -name "*.fdb" | head -n 1)
+# Автоматическое определение файла базы данных (поиск без ограничения глубины)
+db_file=$(find /home/bases -type f -name "*.fdb" | head -n 1)
 if [[ -z "$db_file" ]]; then
     log "Ошибка: Файл базы данных не найден в каталоге /home/bases."
     exit 1
@@ -134,7 +127,7 @@ DataExpress Web Server запущен на порту 8080.
 Откройте в браузере: http://$server_ip:8080
 
 Для подключения к базе данных используйте следующую строку подключения:
-  $server_ip:3050:/home/bases/$(basename $db_file)
+  $server_ip:3050:$db_file
   Пользователь: SYSDBA
   Пароль: masterkey
 
@@ -144,5 +137,6 @@ Webmin установлен и использует SSL.
 EOM
 
 log "Установка завершена."
+
 
 
