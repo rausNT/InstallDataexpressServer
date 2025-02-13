@@ -18,17 +18,23 @@ log "Обновление системных пакетов..."
 sudo apt update -y && sudo apt upgrade -y
 
 log "Установка необходимых зависимостей..."
-sudo apt-get install -y libncurses5 openbsd-inetd nano ufw clamav unzip certbot
+sudo apt-get install -y libncurses5 openbsd-inetd nano ufw clamav unzip certbot expect
 
 log "Установка Firebird 2.5..."
 wget https://github.com/FirebirdSQL/firebird/releases/download/R2_5_9/FirebirdCS-2.5.9.27139-0.amd64.tar.gz
 sudo tar -xzf FirebirdCS-2.5.9.27139-0.amd64.tar.gz
 cd FirebirdCS-2.5.9.27139-0.amd64
-# Автоматическое подтверждение установки Firebird (нажатие Enter)
-sudo ./install.sh <<EOF
 
-y
+# Автоматическая установка Firebird с помощью expect:
+expect <<EOF
+spawn sudo ./install.sh
+expect "Press Enter to start installation"
+send "\r"
+expect "please enter SYSDBA password"
+send "masterkey\r"
+expect eof
 EOF
+
 cd ..
 rm -rf FirebirdCS-2.5.9.27139-0.amd64*
 
@@ -85,7 +91,7 @@ sudo mkdir -p /home/bases
 sudo chown firebird:firebird /home/bases
 sudo chmod 750 /home/bases
 
-# Запрос пути к пользовательской базе или загрузка тестовой
+# Запрос пути к пользовательской базе или загрузка тестовой базы
 read -p "Хотите загрузить свою базу данных? (y/n): " use_custom_db
 if [[ "$use_custom_db" == "y" ]]; then
     read -p "Введите полный путь к файлу базы данных: " custom_db_path
@@ -94,7 +100,8 @@ if [[ "$use_custom_db" == "y" ]]; then
         sudo chown firebird:firebird /home/bases/custom_database.fdb
         sudo chmod 640 /home/bases/custom_database.fdb
         log "Пользовательская база данных загружена и установлена."
-    else\n        log "Ошибка: Файл базы данных не найден. Загружается тестовая база."
+    else
+        log "Ошибка: Файл базы данных не найден. Загружается тестовая база."
         use_custom_db="n"
     fi
 fi
@@ -104,7 +111,9 @@ if [[ "$use_custom_db" != "y" ]]; then
     wget -O /tmp/dataexpress.zip "https://mydataexpress.ru/files/dataexpress.zip?r=4986"
     sudo unzip /tmp/dataexpress.zip -d /home/bases/
     sudo chown -R firebird:firebird /home/bases/
-    sudo chmod -R 750 /home/bases/\n    sudo find /home/bases/ -type f -exec chmod 640 {} \\;\n    rm /tmp/dataexpress.zip
+    sudo chmod -R 750 /home/bases/
+    sudo find /home/bases/ -type f -exec chmod 640 {} \\;
+    rm /tmp/dataexpress.zip
 fi
 
 # Автоматическое определение файла базы данных (первый найденный .fdb в каталоге /home/bases)
@@ -125,7 +134,7 @@ DataExpress Web Server запущен на порту 8080.
 Откройте в браузере: http://$server_ip:8080
 
 Для подключения к базе данных используйте следующую строку подключения:
-  $server_ip:3050:$db_file
+  $server_ip:3050:/home/bases/$(basename $db_file)
   Пользователь: SYSDBA
   Пароль: masterkey
 
@@ -135,4 +144,5 @@ Webmin установлен и использует SSL.
 EOM
 
 log "Установка завершена."
+
 
